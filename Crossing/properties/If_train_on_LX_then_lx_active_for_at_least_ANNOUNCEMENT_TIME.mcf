@@ -1,0 +1,12 @@
+% If a train is going to be on the LX in a given second.
+% Then the level crossing should be activated for 
+% at least ANNOUNCEMENT_TIME seconds
+[true*.
+  exists id: Track_id, t: Time .
+	train_on_lx_this_second(id, t)
+]
+exists t', t_active : Time .
+<
+  lx_status(activated(t', t_active))
+>
+val(t_active >= ANNOUNCEMENT_TIME)

@@ -1,0 +1,1345 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% GLOBAL LEVEL CROSSING VARIABLES
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+eqn
+	ANNOUNCEMENT_TIME = 25; % 
+	% 25 seconds is a usual value, 20 seconds is the minimal value
+	EXCEEDING_ANNOUNCEMENT_TIME = 5;
+
+	MAX_SPEED = 38; % In m/s
+	% The max_speed of 38 m/s is equal to a speed of 136.8 km/h
+	% Which is close to the max speed in most of the Netherlands of 140 km/h
+
+	REPORTS_EVERY_SECONDS = 5;
+	% The time that a train report needs to be sned is not specified in any 
+    % document that we have access to, so we chose a base value of every 5 seconds.
+	MIN_SPEED = 0; % Global minimum speed for all trains
+	ACCELERATION = 1; % m/s^2
+	DECELERATION = 1; % m/s^2
+	MAX_HALTED = Halted(5, 1); % The maximum time the train can stand still
+
+	USE_TIME_ACTIVE = true; % Use lx time active for TR-based activation
+	EXPECTED_BEHAVIOUR = true; % Trains behave as expected (trains never decelerate and always emidatly accelerate to maximum speed)
+	MAX_UNEXPECTED_CHANGES = 1;
+
+	INCLUDE_CSS_465 = false; % Don't use TVP-based activation if LX protected by TR-based announcement (leads to failures)
+
+	CONDITIONAL_SSP_SPEED = 3; % m/s, for trains that use departure detection. Represents 10 km/h
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% TRACK AND TRAIN SPEC
+%%
+%% At most 4 routes (tracks) across the LX 
+%%
+%% TRACK = List of natural numbers
+%%   Length of the list indicates the number of track sections 
+%%   The numbers indicate the ammount of positions per track section = length of track section	 in meter
+%%	 Each Track section has a maximum length of 1500 meter.
+%%   EXAMPLE: [5,3,2] means 3 track sections consisting of 5, 3 and 2 postitons respectivaly 
+%%
+%% TRAINSPEC = struct of either No_Train or Train_Loc(front_w, rear_w)
+%%   First number defines the position of front wheel
+%%   Second number defines the position of rear wheel		
+%%
+%% TYPE = TVP | TR
+%%	 TVP means train uses Trackside train detection
+%%   TR means train uses Train Reports
+%%
+%% SPEED = speed of train, measured in #positions per move action.
+%%  
+%% MAX_SPEED = maximum allowed speed of the train.
+%%
+%% LXLOCATION = TS_id of the track section that is on the LX
+%%   Should be < length of track
+%%   For TVP trains their should at least be ANNOUNCEMENT_TIME * MAX_SPEED nr positions before LXLOCATION 
+%%   This also defines the locations of both borders of the LX/WD pavement for each individual track
+%%   This TS is also TVP middle section
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+eqn
+	TRACK_0 = [150,100,40];
+	TRAINSPEC_0 = No_Train;
+	TYPE_0 = TR;
+	SPEED_0 = 0;
+	MAX_SPEED_0 = 38;
+	LXLOCATION_0 = 1;
+	DEPARTURE_DETECTION_0 = true;
+
+	TRACK_1 = [1400,700,100,10];
+	TRAINSPEC_1 = No_Train;
+	TYPE_1 = TVP;
+	SPEED_1 = 30; % 108 km/h
+	MAX_SPEED_1 = 30;
+	LXLOCATION_1 = 2;
+	DEPARTURE_DETECTION_1 = false;
+
+	TRACK_2 = [400,500,100,100];
+	TRAINSPEC_2 = Train_Loc(40, 0);
+	TYPE_2 = TR;
+	SPEED_2 = 15; % 54 km/h
+	MAX_SPEED_2 = 20; % 72 km/h
+	LXLOCATION_2 = 2;
+	DEPARTURE_DETECTION_2 = false;
+	
+	TRACK_3 = [300,800,200,100,100]; 
+	TRAINSPEC_3 = No_Train;
+	TYPE_3 = TVP;
+	SPEED_3 = 35; % 126 km/h
+	MAX_SPEED_3 = 35; % 126 km/h
+	LXLOCATION_3 = 3;
+	DEPARTURE_DETECTION_3 = false;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Map constants to list	    
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+sort
+	Tracks = List(Track);
+	Track_ids = List(Track_id); 
+	Train_specs = List(Train_spec);
+	Train_types = List(Train_type);
+	Speeds = List(Speed);
+	LXLocations = List(TS_id);
+	Departure_detections = List(Bool);
+map
+	TRACKS: Tracks;
+	TRACK_IDS: Track_ids;
+	TRAIN_SPECS: Train_specs;
+	TRAIN_TYPES : Train_types;
+	SPEEDS: Speeds;
+	MAX_SPEEDS: Speeds;
+	LXLOCATIONS: LXLocations;
+	DEPARTURE_DETECTIONS: Departure_detections;
+eqn
+	TRACKS = [TRACK_0, TRACK_1, TRACK_2, TRACK_3];
+	TRACK_IDS = [0,1,2,3];
+	TRAIN_SPECS= [TRAINSPEC_0, TRAINSPEC_1, TRAINSPEC_2, TRAINSPEC_3];
+	TRAIN_TYPES = [TYPE_0, TYPE_1, TYPE_2, TYPE_3];
+	SPEEDS = [SPEED_0, SPEED_1, SPEED_2, SPEED_3];
+	MAX_SPEEDS = [MAX_SPEED_0, MAX_SPEED_1, MAX_SPEED_2, MAX_SPEED_3];
+	LXLOCATIONS = [LXLOCATION_0, LXLOCATION_1, LXLOCATION_2, LXLOCATION_3];
+	DEPARTURE_DETECTIONS = [DEPARTURE_DETECTION_0, DEPARTURE_DETECTION_1, DEPARTURE_DETECTION_2, DEPARTURE_DETECTION_3];
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Global var definitions 			    
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+map
+	TRACK_1, TRACK_2, TRACK_3, TRACK_0 : Track;
+	TRAINSPEC_1, TRAINSPEC_2, TRAINSPEC_3, TRAINSPEC_0 : Train_spec;
+	TYPE_0, TYPE_1, TYPE_2, TYPE_3: Train_type;
+	SPEED_1, SPEED_2, SPEED_3, SPEED_0: Speed;
+	MAX_SPEED_0, MAX_SPEED_1, MAX_SPEED_2, MAX_SPEED_3: Speed;
+	LXLOCATION_1, LXLOCATION_2, LXLOCATION_3, LXLOCATION_0: TS_id;
+	DEPARTURE_DETECTION_0, DEPARTURE_DETECTION_1, DEPARTURE_DETECTION_2, DEPARTURE_DETECTION_3: Bool;
+	ANNOUNCEMENT_TIME, REPORTS_EVERY_SECONDS, EXCEEDING_ANNOUNCEMENT_TIME: Time;
+	MAX_SPEED, MIN_SPEED: Speed;
+	ACCELERATION, DECELERATION: Speed;
+	MAX_HALTED: Halted;
+	MAX_UNEXPECTED_CHANGES: Nat;
+	USE_TIME_ACTIVE, EXPECTED_BEHAVIOUR, INCLUDE_CSS_465: Bool;
+	CONDITIONAL_SSP_SPEED: Speed;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Track_ids				    
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+sort
+	Track_id = Nat;
+map
+	FIRST_ID: Track_id;
+	LAST_ID: Track_id;
+	legal_train_and_track: Track_id -> Bool;
+	nr_trains_and_tracks: Track_ids -> Nat;
+	existing_trains: Track_ids -> Track_ids;
+	remove_id: Track_ids # Track_id -> Track_ids;
+var
+	id, id': Track_id;
+	ids: Track_ids;
+eqn
+	FIRST_ID = 0;
+	LAST_ID = 3;
+	legal_train_and_track(id) = 
+	  legal_track(id) && 
+	  legal_train_spec(id) && 
+	  long_enough_announcement(id)
+	;
+	
+	nr_trains_and_tracks([]) = 0;
+	nr_trains_and_tracks(id |> ids) =
+	  if(legal_train_and_track(id), 1 + nr_trains_and_tracks(ids), nr_trains_and_tracks(ids))
+	; 
+	
+	existing_trains([]) = [];
+	existing_trains(id |> ids) = 
+	  if(legal_train_and_track(id), id |> existing_trains(ids), existing_trains(ids))
+	; 
+	
+	remove_id([], id) = [];
+	remove_id(id' |> ids, id) =
+	  if(id == id', ids, id' |> remove_id(ids, id))
+	;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Track
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+sort
+	Track = List(Pos_id);
+map
+	legal_track: Track_id -> Bool;
+var
+	id: Track_id;
+eqn
+	legal_track(id) = TRACKS.id != [];
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Train Specification 			    
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+sort
+	Train_spec = struct 
+	  No_Train | 
+	  Train_Loc(front_w: Pos_id, rear_w: Pos_id)
+	;
+	Train_ts = struct Train_TS(f_ts: TS_id, r_ts: TS_id);
+	Train_type = struct TVP | TR;
+	Train_locations = Track_id -> Train_spec;
+map
+	legal_train_spec: Track_id -> Bool;
+	front_before_rear: Train_spec -> Bool;
+	initial_locations: Track_id -> Train_spec;
+	update_positions: Train_locations # Track_ids # Train_specs -> Train_locations;
+	tspec_to_ts: Track_id # Train_spec -> Train_ts;
+var
+	t_spec: Train_spec;
+	id: Track_id;
+	pos: Train_spec;
+	t_locs: Train_locations;
+	ids: Track_ids;
+	poses: Train_specs;
+eqn
+	legal_train_spec(id) = TRAIN_SPECS.id != No_Train && front_before_rear(TRAIN_SPECS.id);
+	front_before_rear(t_spec) = front_w(t_spec) >= rear_w(t_spec);
+
+	initial_locations(id) = TRAIN_SPECS.id;
+		
+	update_positions(t_locs, [], poses) = t_locs;
+	update_positions(t_locs, ids, []) = t_locs;
+	update_positions(t_locs, id |> ids, pos |> poses) = 
+	  update_positions(t_locs[id -> pos], ids, poses)
+	;
+
+	tspec_to_ts(id, t_spec) = 
+	  Train_TS(get_ts_of_pos(id, front_w(t_spec)), get_ts_of_pos(id, rear_w(t_spec)))
+	; 
+	
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% POS (Position)				    
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+sort
+	Pos_id = Nat;
+map
+	FIRST_POS, LAST_POS: Track_id -> Pos_id;
+var
+	id: Track_id;
+eqn
+	FIRST_POS(id) = 0;
+	LAST_POS(id) = last_pos(id);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% TS (Track Sections)
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+sort
+	TS_id = Nat;
+map
+	FIRST_TS, LAST_TS: Track_id -> TS_id;
+var
+	id: Track_id;
+eqn
+	FIRST_TS(id) = 0;
+	LAST_TS(id) = last_ts(id);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Utility for track computations
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+map
+	track_length: Track -> Nat;
+	nr_ts: Track -> Nat;
+	last_pos: Track_id -> Pos_id;
+	last_ts: Track_id -> TS_id;
+var
+	id: Track_id;
+	t: Track;
+	n: Nat;
+eqn
+	track_length([]) = 0;
+	track_length(n |> t) = n + track_length(t);
+	nr_ts([]) = 0;
+	nr_ts(n |> t) = 1 + nr_ts(t);
+	last_pos(id) = Int2Nat(track_length(TRACKS.id) - 1) + FIRST_POS(id); 
+	last_ts(id) = Int2Nat(nr_ts(TRACKS.id) - 1) + FIRST_TS(id);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Next POS computation
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+map
+	next_pos_speed:  Track_id # Pos_id # Speed -> Pos_id;
+	next_train_loc: Track_id # Train_spec # Speed -> Train_spec;
+	train_at_end: Track_id # Train_spec -> Bool;
+var 
+	id: Track_id;
+	v: Pos_id;
+	s: Speed;
+	t_spec: Train_spec;
+eqn
+	next_pos_speed(id, v, s) = min(LAST_POS(id), v + s);
+
+	next_train_loc(id, t_spec, s) = 
+	  Train_Loc(next_pos_speed(id, front_w(t_spec), s), next_pos_speed(id, rear_w(t_spec), s))
+	;
+
+	train_at_end(id, t_spec) = rear_w(t_spec) == LAST_POS(id);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%	
+%%
+%% Next TS computation
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+map
+	legal_ts: Track_id # TS_id -> Bool;
+	next_ts: Track_id # TS_id -> TS_id;
+	get_ts_size: Track_id # TS_id -> Nat; % Returns length of TS from start in #POS
+	get_first_pos_of_ts: Track_id # TS_id -> Pos_id; % Returns the first POS of a given TS
+	get_ts_of_pos: Track_id # Pos_id -> TS_id; % Returns the TS of given POS
+	ts_of_pos: Track_id # Pos_id # TS_id -> TS_id; % Helper function for get_ts_of_pos
+var
+	id: Track_id;
+	ts: TS_id;
+	pos: Pos_id;
+eqn
+	legal_ts(id, ts) = ts >= FIRST_TS(id) && ts <= LAST_TS(id);
+	next_ts(id, ts) = if(ts == LAST_TS(id), ts, ts+1);
+
+	(ts == FIRST_TS(id)) -> 
+	  get_ts_size(id, ts) = TRACKS.id.FIRST_TS(id);
+	(ts > FIRST_TS(id)) -> 
+	  get_ts_size(id, ts) = TRACKS.id.ts + get_ts_size(id, Int2Nat(max(FIRST_TS(id), ts - 1)));
+	
+	(ts == FIRST_TS(id)) -> 
+	  get_first_pos_of_ts(id, ts) = FIRST_POS(id);
+	(ts > FIRST_TS(id)) -> 
+	  get_first_pos_of_ts(id, ts) = get_ts_size(id, Int2Nat(max(FIRST_TS(id), ts - 1)));
+
+	get_ts_of_pos(id, pos) = ts_of_pos(id, pos, LAST_TS(id));
+	(pos >= get_first_pos_of_ts(id, ts)) -> 
+	  ts_of_pos(id, pos, ts) = ts;
+	(pos < get_first_pos_of_ts(id, ts)) -> 
+	  ts_of_pos(id, pos, ts) = ts_of_pos(id, pos, Int2Nat(max(FIRST_TS(id), ts - 1)));
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Speed computations
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+sort
+	Speed = Nat;
+	Time = Nat;
+	Halted = struct Halted(seconds: Time, times: Nat);
+	Acc_Status = struct Acc_Status(acc_type: Acc_Type, times_changed: Nat);
+	Acc_Type = struct Breaking | Accelerating | Steady;
+map
+	accelerate: Track_id # Speed -> Speed;
+	decelerate: Speed -> Speed;
+	update_acc_status: Acc_Status # Acc_Type -> Acc_Status;
+	init_halted: Speed -> Halted;
+var
+	id: Track_id;
+	s: Speed;
+	acc_s: Acc_Status;
+	acc_t: Acc_Type;
+eqn
+	accelerate(id, s) = min(s+ACCELERATION, MAX_SPEEDS.id);
+	decelerate(s) = Int2Nat(max(s-DECELERATION, MIN_SPEED));
+
+	update_acc_status(acc_s, acc_t) = 
+	  Acc_Status(acc_t, if(acc_type(acc_s) == acc_t, times_changed(acc_s), times_changed(acc_s) + 1))
+	;
+
+	init_halted(s) = if(s == 0, Halted(0, 1), Halted(0,0));
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Utility for TVP computations
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+map
+	min_length_announcement_zone: Nat;
+	first_ts_announcement_zone: Track_id -> TS_id;
+	long_enough_announcement: Track_id -> Bool;
+	get_first_ts_announcement_zone: Track_id -> Int;
+	find_ts_announcement_zone: Track_id # TS_id # Nat -> Int;
+	length_announcement_zone: Track_id -> Nat;
+	get_length_announcement_zone: Track_id # TS_id # Nat -> Nat;
+	activation_delay: Track_id -> Time;
+var
+	id: Track_id;
+	ts: TS_id; 
+	size: Nat;
+eqn
+	min_length_announcement_zone = MAX_SPEED * ANNOUNCEMENT_TIME;
+	first_ts_announcement_zone(id) = 
+	  Int2Nat(max(0, get_first_ts_announcement_zone(id)))
+	;
+
+	long_enough_announcement(id) = 
+	  if(TRAIN_TYPES.id == TVP,  get_first_ts_announcement_zone(id) != -1, true)
+	;
+
+	get_first_ts_announcement_zone(id) = 
+	  find_ts_announcement_zone(id, Int2Nat(LXLOCATIONS.id - 1), 0);
+	(ts == FIRST_TS(id) && size + TRACKS.id.ts < min_length_announcement_zone) -> 
+	  find_ts_announcement_zone(id, ts, size) = -1;
+	(size + TRACKS.id.ts >= min_length_announcement_zone) -> 
+	  find_ts_announcement_zone(id, ts, size) = ts;
+	(ts > FIRST_TS(id) && size + TRACKS.id.ts < min_length_announcement_zone) -> 
+	  find_ts_announcement_zone(id, ts, size) = find_ts_announcement_zone(id, Int2Nat(ts - 1), size + TRACKS.id.ts);
+
+	length_announcement_zone(id) = 
+	  get_length_announcement_zone(id, first_ts_announcement_zone(id), 0)
+	;
+
+	(ts < Int2Nat(LXLOCATIONS.id - 1)) -> 
+	  get_length_announcement_zone(id, ts, size) = get_length_announcement_zone(id, ts + 1, size + TRACKS.id.ts);
+	(ts == Int2Nat(LXLOCATIONS.id - 1)) ->
+	  get_length_announcement_zone(id, ts, size) = size + TRACKS.id.ts;
+
+	activation_delay(id) = 
+	  max(0, Int2Nat(length_announcement_zone(id) - min_length_announcement_zone) div Nat2Pos(MAX_SPEED) - 1)
+	;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Check_occupied functions
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+sort
+	Announcement_status = struct 
+	  No_announcement(timer_active: Bool) | 
+	  Announcement(announcement_type: Train_type)
+	;
+	Currently_active = Track_id -> Announcement_status;
+map
+	on_lx_occupied: Track_id # Train_spec -> Bool;
+	on_lx_occupied_ts: Track_id # Train_ts -> Bool;
+
+	lx_occupied_this_second: Track_id # Train_spec # Speed -> Bool;
+
+	announcement_occupied: Track_id # Train_spec -> Bool;
+	annoucement_occupied_ts: Track_id # Train_ts -> Bool;
+	wheel_in_annoucement_zone: Track_id # TS_id -> Bool;	
+	
+	train_before_announcement_zone: Track_id # Train_spec -> Bool;
+
+	no_announcements: Track_ids # Currently_active -> Bool;
+	no_announcement: Track_id # Currently_active -> Bool;
+
+	initial_lx_activation: Track_id -> Announcement_status;
+var
+	id: Track_id;
+	ids: Track_ids;
+	tspec: Train_spec;
+	train_ts: Train_ts;
+	ts: TS_id;
+	ca: Currently_active;
+	s: Speed;
+eqn
+	on_lx_occupied(id, tspec) = 
+	  on_lx_occupied_ts(id, tspec_to_ts(id, tspec))
+	;
+
+	on_lx_occupied_ts(id, train_ts) = 
+	  f_ts(train_ts) == LXLOCATIONS.id ||
+	  r_ts(train_ts) == LXLOCATIONS.id ||
+	  (f_ts(train_ts) > LXLOCATIONS.id && r_ts(train_ts) < LXLOCATIONS.id)
+	;
+
+	lx_occupied_this_second(id, tspec, s) =
+	  on_lx_occupied(id, tspec) || 
+	  on_lx_occupied(id, Train_Loc(front_w(tspec) + Int2Nat(max(0, s - 1)), rear_w(tspec)))
+	;
+
+	announcement_occupied(id, tspec) = 
+	  annoucement_occupied_ts(id, tspec_to_ts(id, tspec))
+	;
+
+	annoucement_occupied_ts(id, train_ts) = 
+	  wheel_in_annoucement_zone(id, f_ts(train_ts)) || 
+	  wheel_in_annoucement_zone(id, r_ts(train_ts))
+	;
+
+	wheel_in_annoucement_zone(id, ts) = 
+	  ts >= first_ts_announcement_zone(id) &&	
+	  ts < LXLOCATIONS.id
+	;
+
+	train_before_announcement_zone(id, tspec) = 
+	  front_w(tspec) < get_first_pos_of_ts(id, first_ts_announcement_zone(id))
+	;
+
+	no_announcements([], ca) = true;
+	no_announcements(id |> ids, ca) = 
+	  no_announcement(id, ca) && 
+	  no_announcements(ids, ca)
+	;
+
+	no_announcement(id, ca) = 
+	  ca(id) == No_announcement(true) || 
+	  ca(id) == No_announcement(false)
+	;
+
+	initial_lx_activation(id) = No_announcement(false);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Train_Report functions
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+sort
+	Store_Reports = struct 
+	  None | 
+	  Report(location: Train_spec, reported_speed: Speed)
+	;
+	Store_Status = struct 
+	  Driving | 
+	  Standstill
+	;
+	Reports = Track_id -> Store_Reports;
+	Train_Status = Track_id -> Store_Status;
+map
+	train_report_needed: Time -> Bool;
+	train_past_lx: Track_id # Train_spec -> Bool;
+	train_before_lx: Track_id # Train_spec -> Bool;
+	train_before_max_tr_announcement: Track_id # Train_spec -> Bool;
+	get_time_lx_active: LX_State -> Time;
+	time_till_lx_closed: LX_State -> Time;
+	initial_reports: Track_id -> Store_Reports;
+	at_standstill: Track_id # Train_spec # Speed # Reports -> Bool;
+	initial_status: Track_id -> Store_Status;
+	set_start_reports: Track_ids # Reports -> Reports;
+var
+	id: Track_id;
+	tspec: Train_spec;
+	time: Time;
+	status: LX_State;
+	reports: Reports;
+	s: Speed;
+	ids: Track_ids;
+eqn
+	train_report_needed(time) =
+	  time mod Nat2Pos(REPORTS_EVERY_SECONDS) == 0
+	;
+	
+	train_before_max_tr_announcement(id, tspec) = 
+	  front_w(tspec) + MAX_SPEEDS.id * (ANNOUNCEMENT_TIME + 2) < get_first_pos_of_ts(id, LXLOCATIONS.id)
+	;
+
+	train_past_lx(id, tspec) = get_ts_of_pos(id, rear_w(tspec)) > LXLOCATIONS.id;
+
+	train_before_lx(id, tspec) = get_ts_of_pos(id, front_w(tspec)) < LXLOCATIONS.id;
+
+	% Get the time that the LX is already active
+	get_time_lx_active(status) = if(status == deactivated, 0, time_active(status));
+
+	% Calculate the time it will take till the LX is fully closed
+	% First checks if the time active is used in the computation
+	time_till_lx_closed(status) = if(USE_TIME_ACTIVE, Int2Nat(max(0, ANNOUNCEMENT_TIME - get_time_lx_active(status))), ANNOUNCEMENT_TIME);
+
+	initial_reports(id) = None;
+
+	set_start_reports([], reports) = reports;
+	set_start_reports(id |> ids, reports) = 
+	  set_start_reports(ids, if(TRAIN_SPECS.id != No_Train, reports[id -> Report(TRAIN_SPECS.id, SPEEDS.id)], reports));
+
+	at_standstill(id, tspec, s, reports) = 
+	  reports(id) != None && 
+	  tspec == location(reports(id)) && 
+	  s == 0 && 
+	  reported_speed(reports(id)) == 0
+	;
+
+	initial_status(id) = Driving;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Approach time functions
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+map
+	max_safe_front_end: Track_id # Train_spec # Speed -> Pos_id;
+	approach_distance: Track_id # Train_spec # Speed -> Int;
+	earliest_maximum_acceleration: Track_id # Speed -> Time;
+	distance_during_acceleration: Track_id # Speed -> Int;
+	distance_at_full_speed: Track_id # Train_spec # Speed -> Int;
+	time_at_full_speed: Track_id # Train_spec # Speed -> Time;
+	time_to_lx_while_accelerating: Track_id # Train_spec # Speed -> Time;
+	calc_time_accelerating: Int # Speed # Time -> Time;
+
+	approach_time: Track_id # Train_spec # Speed -> Time;
+var
+	id: Track_id;
+	tspec: Train_spec;
+	time: Time;
+	s: Speed;
+	distance: Int;
+eqn
+	% Get the furthest train position that the train can be in this second
+	max_safe_front_end(id, tspec, s) =
+	  min(front_w(tspec) + Int2Nat(max(0, s - 1)), LAST_POS(id))
+	;
+
+	% Distance between train max safe front end and the nearest border of the LX
+	approach_distance(id, tspec, s) =
+	  get_first_pos_of_ts(id, LXLOCATIONS.id) - max_safe_front_end(id, tspec, s)
+	;
+
+	% Compute the shortest time it takes till the train can drive the maximum speed
+	earliest_maximum_acceleration(id, s) =
+	  Int2Nat(max(0, (MAX_SPEEDS.id - s)) div Nat2Pos(ACCELERATION))
+	;
+
+	% Compute the distance traveled during acceleration to the maximum speed of the train
+	% D = v*t + 1/2*a*t^2
+	distance_during_acceleration(id, s) =
+	  s * earliest_maximum_acceleration(id, s) + ceil((ACCELERATION / 2) * earliest_maximum_acceleration(id, s) * earliest_maximum_acceleration(id, s))
+	;
+
+	% Maximum distance driveable at full speed till LX
+	distance_at_full_speed(id, tspec, s) =
+	  approach_distance(id, tspec, s) - distance_during_acceleration(id, s)
+	;
+
+	% Minimum time driven at full speed till LX
+	time_at_full_speed(id, tspec, s) =
+	  Int2Nat(max(0, distance_at_full_speed(id, tspec, s) div Nat2Pos(MAX_SPEEDS.id)))
+	;
+
+	% Compute the time it takes to reach the LX while accelerating
+	time_to_lx_while_accelerating(id, tspec, s) =
+	  calc_time_accelerating(approach_distance(id, tspec, s), s, 0)
+	;
+
+	% Helper function to compute the time it takes to reach the LX while accelerating
+	(s >= distance) -> 
+	  calc_time_accelerating(distance, s, time) = time;
+	(s < distance) -> 
+	  calc_time_accelerating(distance, s, time) = calc_time_accelerating(distance - s, s + ACCELERATION, time + 1);
+
+	% Calculate the minimum approach time to the LX
+	approach_time(id, tspec, s) =
+	  if(ACCELERATION != 0 && distance_at_full_speed(id, tspec, s) > 0
+		,earliest_maximum_acceleration(id, s) + time_at_full_speed(id, tspec, s)
+		,time_to_lx_while_accelerating(id, tspec, s)
+	  )
+	;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% LX occupancy stuct
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+sort
+	Active = struct 
+	  Deactivated | 
+	  Activated(activation_time: Time)
+	;
+	Train_LX = struct 
+	  LX_Info(past_lx: Bool, before_lx: Bool)
+	;
+map
+	check_train_been_on_lx: Train_LX # Track_id # Train_spec # Speed -> Train_LX;
+var
+	t_lx: Train_LX;
+	id: Track_id;
+	pos: Train_spec;
+	s: Speed;
+eqn
+	check_train_been_on_lx(t_lx, id, pos, s) = 
+	  LX_Info(past_lx(t_lx), (!lx_occupied_this_second(id, pos, s)) || past_lx(t_lx));
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Trains outside activation zone
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+map
+	all_trains_outside_lx_active: Track_ids # Train_locations -> Bool;
+	train_outside_lx_active: Track_id # Train_spec -> Bool;
+	tvp_outside_lx_active: Track_id # Train_spec -> Bool;
+	tr_outside_lx_active: Track_id # Train_spec -> Bool;
+var
+	id: Track_id;
+	ids: Track_ids;
+	t_locs: Train_locations;
+	t_spec: Train_spec;
+eqn
+	all_trains_outside_lx_active([], t_locs) = true;
+	train_outside_lx_active(id, t_locs(id)) -> 
+	    all_trains_outside_lx_active(id |> ids, t_locs) = all_trains_outside_lx_active(ids, t_locs);
+	!train_outside_lx_active(id, t_locs(id)) -> 
+	    all_trains_outside_lx_active(id |> ids, t_locs) = false;
+
+	(TRAIN_TYPES.id == TR) -> 
+	  train_outside_lx_active(id, t_spec) = tr_outside_lx_active(id, t_spec);
+	(TRAIN_TYPES.id == TVP) -> 
+	  train_outside_lx_active(id, t_spec) = tvp_outside_lx_active(id, t_spec);
+
+	tvp_outside_lx_active(id, t_spec) = 
+	  train_before_announcement_zone(id, t_spec) || 
+	  train_past_lx(id, t_spec)
+	;
+	tr_outside_lx_active(id, t_spec) = 
+	  train_before_max_tr_announcement(id, t_spec) || 
+	  train_past_lx(id, t_spec)
+	;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%															 									  							%%%%%
+%%%%%													PROCESSES 									  							%%%%%
+%%%%%													         									  							%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% LX process
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+sort
+	LX_State = struct 
+	  deactivated | 
+	  activated(activated_at: Time, time_active: Time)
+	;
+act
+	activate_lx_css, activate_lx_timer, activate_lx_lx, activate_lx: Track_id # Time;
+	deactivate_lx_css, deactivate_lx_timer, deactivate_lx_lx, deactivate_lx: Track_id # Time;
+	lx_status: LX_State;
+	update_lx_time: Time;
+proc
+	LX(state: LX_State) =
+	  lx_status(state).LX()
+	  +
+	  Update_LX_Time()
+      +
+	  Activate_LX_LX
+	  +
+	  Deactivate_LX_LX
+	;
+
+	Update_LX_Time(state: LX_State) =
+	  sum t: Time . (
+		update_lx_time(t).
+		(state != deactivated) ->
+		  LX(state = activated(activated_at(state), Int2Nat(t - activated_at(state))))
+		<>
+		  LX()
+	  )
+	;
+
+	Activate_LX_LX =
+	  sum id: Track_id, t: Time.
+		activate_lx_lx(id, t).LX(state = activated(t, 0))
+	;
+
+	Deactivate_LX_LX =
+	  sum id: Track_id, t: Time.
+		deactivate_lx_lx(id, t).LX(state = deactivated)
+	;
+	 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Timer process
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+act
+	current_position_t: Track_id # Time # Train_ts;
+	train_report_timer : Track_id # Train_spec # Speed # Time;
+	sync_timers, syncing: Time;
+	remove_train_s, remove_train_r, remove_train_t, remove_train: Track_id;
+	train_on_lx_this_second_ti: Track_id # Time;
+	all_trains_reached_end;
+proc
+	Timer(id: Track_id, type: Train_type, time: Time) =
+	  Emit_Position_Timer().Timer()
+	  +
+	  LX_Actions_Timer().Timer()
+	  +
+	  (type == TR) -> Train_Report()
+	  +
+	  (type == TVP) -> Train_Track_Section()
+	;		
+
+	Train_Report(id: Track_id, type: Train_type, time: Time) =
+	  (train_report_needed(time)) -> (
+		Send_Train_Report_Timer().Sync_Timer()
+	  ) <> (
+      	Sync_Timer()
+	  )
+	;
+	
+	Train_Track_Section(id: Track_id, type: Train_type, time: Time) =
+	  sum train_ts: Train_ts. 
+		current_position_t(id, time, train_ts).Sync_Timer()
+	;
+
+	Sync_Timer(id: Track_id, type: Train_type, time: Time) =
+	  sync_timers(time + 1).Timer(time = time + 1)
+	  +
+	  LX_Actions_Timer().Sync_Timer()
+	  +
+	  remove_train_t(id).(
+		deactivate_lx_timer(id, time).delta
+		+
+		delta
+	  )
+	;
+
+	Emit_Position_Timer(id: Track_id, time: Time) =
+	  train_on_lx_this_second_ti(id, time)
+	;
+
+	Send_Train_Report_Timer(id: Track_id, time: Time) =
+	  sum ts : Train_spec, s : Speed . 
+	    train_report_timer(id, ts, s, time)
+	;
+
+	LX_Actions_Timer(id: Track_id, time: Time) =
+	  activate_lx_timer(id, time)
+	  +
+	  deactivate_lx_timer(id, time)
+	;
+
+	Ghost_Timer(nr_trains: Nat) =
+	  (nr_trains == 0) ->
+		all_trains_reached_end.Ghost_Timer()
+	  +
+	  (nr_trains == 1) -> 
+		sum t: Time .
+ 		  sync_timers(t)|sync_timers(t)|sync_timers(t).Ghost_Timer()
+	  +
+	  (nr_trains == 2) ->
+		sum t: Time .
+		  sync_timers(t)|sync_timers(t).Ghost_Timer()
+	  +
+	  (nr_trains == 3) -> 
+		sum t: Time .
+		  sync_timers(t).Ghost_Timer()
+	  +
+	  sum id: Track_id .
+	    remove_train_r(id).Ghost_Timer(nr_trains = Int2Nat(nr_trains - 1))
+	;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Train process
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+act
+	move, move_train: Track_id # Train_spec;
+	current_position, current_position_s: Track_id # Time # Train_ts;
+	train_on_lx_first_time: Track_id;
+	train_on_lx_this_second_t, train_on_lx_this_second: Track_id # Time;
+	middle_section_free_s, middle_section_free_r, middle_section_free: Track_id;
+	set_max_train_speed_s, set_max_train_speed_r, set_max_train_speed: Track_id # Speed;
+proc
+	Train(id: Track_id, type: Train_type, train_loc: Train_spec, train_lx: Train_LX, halted: Halted, speed,current_max_speed: Speed, acc_status : Acc_Status) =
+	  Emit_Position_Train() 
+	  +
+	  sum max_speed: Speed . 
+		set_max_train_speed_r(id, max_speed).Train(current_max_speed = max_speed)
+	  +
+	  (type == TR) -> Train_Report_Train().Train()
+	  +
+	  (train_past_lx(id, train_loc) && !past_lx(train_lx)) -> (
+		middle_section_free_s(id).Train(train_lx = LX_Info(true, false))
+	  ) <> (
+	    (type == TVP) -> (
+		  sum t: Time. current_position_s(id, t, tspec_to_ts(id, train_loc)).Move_Train()
+	    ) <>
+		  Move_Train()
+	  )
+	;
+
+	Emit_Position_Train(id: Track_id, type: Train_type, train_loc: Train_spec, train_lx: Train_LX, halted: Halted, speed,current_max_speed: Speed, acc_status : Acc_Status) =
+	  (lx_occupied_this_second(id, train_loc, speed)) -> (
+		(before_lx(train_lx)) -> (
+		  train_on_lx_first_time(id).Train(train_lx = LX_Info(false, false))
+		) <> (
+		  Train_On_Lx_This_Second_T().Train()
+		)
+	  )
+	;
+
+	Train_On_Lx_This_Second_T(id: Track_id) =
+	  sum t: Time.
+		train_on_lx_this_second_t(id, t)
+	;
+
+	Train_Report_Train(id: Track_id, train_loc: Train_spec, speed: Speed) =
+	  sum t: Time.
+		train_report_train(id, train_loc, speed, t)
+	;
+	  
+	Move_Train(id: Track_id, type: Train_type, train_loc: Train_spec, train_lx: Train_LX, halted: Halted, speed,current_max_speed: Speed, acc_status : Acc_Status) =
+	  (!train_at_end(id, train_loc)) -> (		  
+		move_train(id, next_train_loc(id, train_loc, speed)).
+		Change_Train_Speed(train_lx = check_train_been_on_lx(train_lx, id, train_loc, speed), train_loc = next_train_loc(id, train_loc, speed))
+	  ) <> (
+		remove_train_s(id).delta
+      )
+	;
+
+	Change_Train_Speed(id: Track_id, type: Train_type, train_loc: Train_spec, train_lx: Train_LX, halted: Halted, speed,current_max_speed: Speed, acc_status : Acc_Status) =
+	  % ACCELERATE
+	  (speed < current_max_speed && ACCELERATION != 0) -> 
+		Train(speed = accelerate(id, speed), halted = Halted(0, times(halted)), 
+			  acc_status = update_acc_status(acc_status, Accelerating)
+			 )
+	  +
+	  % DECELERATE
+	  (speed > MIN_SPEED && DECELERATION != 0 && (EXPECTED_BEHAVIOUR => speed > current_max_speed)) -> (
+	    % Base case, expected break since train speed greater than allowed speed
+		(speed > current_max_speed) -> (
+		  Train(speed = decelerate(speed), acc_status = update_acc_status(acc_status, Breaking))
+		) <> (
+		  % ALL BREAKING HERE IS UNEXPECTED
+		  % Only allow the train to stand still if times halted is not jet reached
+		  (decelerate(speed) == 0 && times(halted) < times(MAX_HALTED) && 
+			((acc_type(acc_status) != Breaking) => times_changed(acc_status) < MAX_UNEXPECTED_CHANGES)
+		  ) -> 
+			Train(speed = decelerate(speed), halted = Halted(0, times(halted) + 1), 
+				  acc_status = update_acc_status(acc_status, Breaking))
+		  +
+		  (decelerate(speed) > 0 &&
+		   ((acc_type(acc_status) != Breaking) => times_changed(acc_status) < MAX_UNEXPECTED_CHANGES)
+		  ) ->
+			Train(speed = decelerate(speed), acc_status = update_acc_status(acc_status, Breaking)) 
+		)
+	  )
+	  +
+	  % Only allow to stay at same speed if time_standstill not maximal and train not driving too fast
+	  % And if we want expected behaviour the train can only stay at the same speed if it is at current max speed
+	  (seconds(halted) < seconds(MAX_HALTED) && 
+	   speed <= current_max_speed && 
+	   (EXPECTED_BEHAVIOUR => (speed == current_max_speed || speed == 0)) &&
+	   (speed == current_max_speed || ((acc_type(acc_status) != Steady) => times_changed(acc_status) < MAX_UNEXPECTED_CHANGES)) 
+	  ) -> (
+	    (speed == 0) -> (
+		  Train(halted = Halted(seconds(halted) + 1, times(halted)),
+				acc_status = update_acc_status(acc_status, Steady))
+		) <> 
+		(speed == current_max_speed) -> (
+		  Train(acc_status = update_acc_status(acc_status, Steady))
+		) <> (
+		  Train(acc_status = update_acc_status(acc_status, Steady))
+		)
+	  )					
+	;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% All Trains process
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+act
+	receive_pos: Track_id # Train_spec;
+	all_trains_outside_active_zone;
+	remove_train_all_trains, remove_train_g: Track_id;
+proc
+	All_Trains(ids: Track_ids, train_locs: Train_locations) =
+	  (all_trains_outside_lx_active(ids, train_locs)) ->
+	    all_trains_outside_active_zone.All_Trains()
+	  +
+	  (nr_trains_and_tracks(ids) == 1) ->
+		sum loc0: Train_spec . (
+		  receive_pos(ids.0, loc0).
+  	      All_Trains(train_locs = update_positions(train_locs, ids, [loc0]))
+	    )
+	  +
+	  (nr_trains_and_tracks(ids) == 2) ->
+		sum loc0, loc1: Train_spec . (
+		  receive_pos(ids.0, loc0)|receive_pos(ids.1, loc1).
+		  All_Trains(train_locs = update_positions(train_locs, ids, [loc0, loc1]))
+	    )
+	  +
+	  (nr_trains_and_tracks(ids) == 3) ->
+		sum loc0, loc1, loc2: Train_spec . (
+		  receive_pos(ids.0, loc0)|receive_pos(ids.1, loc1)|receive_pos(ids.2, loc2).
+		  All_Trains(train_locs = update_positions(train_locs, ids, [loc0, loc1, loc2]))
+	    )
+	  +
+	  (nr_trains_and_tracks(ids) == 4) ->
+		sum loc0, loc1, loc2, loc3: Train_spec . (
+		  receive_pos(ids.0, loc0)|receive_pos(ids.1, loc1)|receive_pos(ids.2, loc2)|receive_pos(ids.3, loc3).
+		  All_Trains(train_locs = update_positions(train_locs, ids, [loc0, loc1, loc2, loc3]))
+	    )
+	  +
+	  sum id: Track_id .
+		remove_train_all_trains(id).All_Trains(ids = remove_id(ids, id))
+	;
+
+	Ghost_Trains(nr_trains: Nat) =
+	  (nr_trains == 1) -> 
+ 	    move(5, No_Train)| move(5, No_Train)| move(5, No_Train).Ghost_Trains()
+	  +
+	  (nr_trains == 2) ->
+	    move(5, No_Train)|move(5, No_Train).Ghost_Trains()
+	  +
+	  (nr_trains == 3) -> 
+		move(5, No_Train).Ghost_Trains()
+	  +
+	  sum id: Track_id .
+	    remove_train_g(id).Ghost_Trains(nr_trains = Int2Nat(nr_trains - 1))
+	;
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Check_Standstill process
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+act
+	train_report_check: Track_id # Train_spec # Speed # Time;
+	current_train_status_s, current_train_status_r, current_train_status: Track_id # Store_Status;
+proc
+	Check_Standstill(train_status: Train_Status, reports: Reports) =
+	  sum id: Track_id, loc: Train_spec, s: Speed, t: Time .
+		train_report_check(id, loc, s, t).
+		(at_standstill(id, loc, s, reports)) -> (
+		  Check_Standstill(train_status = train_status[id -> Standstill], reports = reports[id -> Report(loc, s)])
+		) <> (
+		  Check_Standstill(train_status = train_status[id -> Driving], reports = reports[id -> Report(loc, s)])
+		)
+	  +
+	  sum id: Track_id.
+		current_train_status_s(id, train_status(id)).Check_Standstill()
+	;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% CSS Base processes
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+act
+	train_report_train, receive_train_report, train_report: Track_id # Train_spec # Speed # Time;
+	sync_css: Time;
+	deactivate_for_removed_train: Track_id;
+proc
+	CSS(lx_state: LX_State, curr_active: Currently_active) =
+	  CSS_TVP()
+	  +
+	  CSS_TR()
+	  +
+	  Base_CSS()
+	;
+
+	Base_CSS(lx_state: LX_State, curr_active: Currently_active) =
+	  sum t: Time.
+		sync_css(t).
+		(lx_state != deactivated) -> (
+		  CSS(lx_state = activated(activated_at(lx_state), Int2Nat(t - activated_at(lx_state))))
+		) <> (
+	      CSS()
+		)
+	  +
+	  sum id: Track_id .
+	  	deactivate_for_removed_train(id).Check_Deactivate_LX(id = id, curr_active = curr_active[id -> No_announcement(false)])
+	  +
+	  sum id: Track_id.
+		Activation_Timer_Finished(id = id)
+	  +
+	  sum id: Track_id.
+		middle_section_free_r(id).Check_Deactivate_LX(id = id, curr_active = curr_active[id -> No_announcement(false)])
+	;
+
+	Check_Activate_LX(id: Track_id, lx_state: LX_State, curr_active: Currently_active) =
+	  (lx_state == deactivated) ->
+		Activate_LX_CSS()
+	  <>
+	    CSS() 
+	;
+
+	Check_Deactivate_LX(id: Track_id, lx_state: LX_State, curr_active: Currently_active) =
+	  (lx_state != deactivated && no_announcements(TRACK_IDS, curr_active)) ->
+	    % No TVP announcement, No train report announcement, No middle sections
+		Deactivate_LX_CSS()
+	  <>
+		CSS()
+	;
+
+	Activate_LX_CSS(id: Track_id, lx_state: LX_State, curr_active: Currently_active) =
+	  sum t: Time. 
+		activate_lx_css(id, t).CSS(lx_state = activated(t, 0))
+	;
+
+	Deactivate_LX_CSS(id: Track_id, lx_state: LX_State, curr_active: Currently_active) =
+	  sum t: Time.
+		deactivate_lx_css(id, t).CSS(lx_state = deactivated)
+	;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% CSS TR process
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+proc
+	CSS_TR(lx_state: LX_State, curr_active: Currently_active) =
+	  sum id: Track_id, tspec: Train_spec, s: Speed, t: Time.
+	    receive_train_report(id, tspec, s, t).
+		(curr_active(id) != Announcement(TR)) -> (
+		  % LX not activated for current track
+		  (train_before_lx(id, tspec)) -> (
+		    (approach_time(id, tspec, s) >= ANNOUNCEMENT_TIME) -> (
+		  	  % Set timer to activate if time till activation has passed
+			  set_max_train_speed_s(id, MAX_SPEEDS.id).
+		  	  set_activation_timer_css(id, Int2Nat(approach_time(id, tspec,s) - ANNOUNCEMENT_TIME)).
+			  CSS(curr_active = curr_active[id -> No_announcement(true)])
+		    ) <> (
+		    (approach_time(id, tspec, s) < ANNOUNCEMENT_TIME) -> (
+			  (approach_time(id, tspec, s) > time_till_lx_closed(lx_state)) -> (
+		  	    % Train Report Announcemement
+				set_max_train_speed_s(id, MAX_SPEEDS.id).
+				set_activation_timer_css(id, 0).
+		  	    CSS(curr_active = curr_active[id -> No_announcement(true)])
+			  ) <> (
+				% Train must slow down
+				set_max_train_speed_s(id, CONDITIONAL_SSP_SPEED).
+				set_activation_timer_css(id, 0).
+				CSS(curr_active = curr_active[id -> No_announcement(true)])
+			  )
+		    ))
+		  ) <> (
+		    % Train past LX and LX deactivated
+			CSS()
+		  )
+		) <> (
+		  % LX activated for current track
+		  (approach_time(id, tspec, s) < time_till_lx_closed(lx_state)) -> (
+			set_max_train_speed_s(id, CONDITIONAL_SSP_SPEED).
+			(train_past_lx(id, tspec)) -> ( 
+		      Check_Deactivate_LX(id = id, curr_active = curr_active[id -> No_announcement(false)])
+		  	) <>
+		      CSS()
+		  ) <> (
+		  	set_max_train_speed_s(id, MAX_SPEEDS.id).
+			(train_past_lx(id, tspec)) -> ( 
+		      Check_Deactivate_LX(id = id, curr_active = curr_active[id -> No_announcement(false)])
+		  	) <>
+		      CSS()
+		  )
+		)
+	;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% CSS TVP process
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+act
+	current_position_r: Track_id # Time # Train_ts;
+proc
+	CSS_TVP(lx_state: LX_State, curr_active: Currently_active) =
+	  sum id: Track_id, train_ts: Train_ts, time: Time .
+		current_position_r(id, time, train_ts).
+		(curr_active(id) == No_announcement(false) && 
+		 (on_lx_occupied_ts(id, train_ts) || 			
+         annoucement_occupied_ts(id, train_ts)) &&		
+		(INCLUDE_CSS_465 => forall i: Track_id . (curr_active(i) != Announcement(TR))) 
+        ) -> (
+		  (activation_delay(id) > 0) -> (
+			% Delayed announcement						
+			set_activation_timer_css(id, activation_delay(id)).CSS(curr_active = curr_active[id -> No_announcement(true)])
+		  ) <> (
+		    % TVP announcement activated 					
+		    Check_Activate_LX(id = id, curr_active = curr_active[id -> Announcement(TVP)])
+		  )
+		) <>
+		(curr_active(id) == Announcement(TVP) && 
+         !on_lx_occupied_ts(id, train_ts) && 				
+         !annoucement_occupied_ts(id, train_ts) 			
+        ) -> ( 
+		  % TVP announcement deactivated 				
+		  Check_Deactivate_LX(id = id, curr_active = curr_active[id -> No_announcement(false)])
+        ) <>
+		CSS()
+	;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Activation Timer process
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+act
+	set_activation_timer_css, set_activation_timer_act, set_activation_timer: Track_id # Time;
+	activation_timer_finished_css, activation_timer_finished_act, activation_timer_finished: Track_id;
+	ac_time: Time;
+proc
+	Activation_Timer(id: Track_id, active: Active) =
+	  Set_Activation_Timer()
+	  +
+	  (active == Activated(0)) -> (
+		activation_timer_finished_act(id).Update_Time_Activation_Timer(active = Deactivated)
+	  ) <> (
+		Update_Time_Activation_Timer()
+	  )
+	;
+
+	Set_Activation_Timer(id: Track_id, active: Active) =
+	  sum t: Time .
+	    set_activation_timer_act(id, t).Activation_Timer(active = Activated(t))
+	;
+
+	Update_Time_Activation_Timer(id: Track_id, active: Active) =
+	  Set_Activation_Timer()
+	  +
+	  sum t: Time. ac_time(t).
+		(active != Deactivated) -> (
+		  Activation_Timer(active = Activated(Int2Nat(activation_time(active) - 1)))
+		) <> (
+		  Activation_Timer()
+	 	)
+	;
+
+	Activation_Timer_Finished(id: Track_id, lx_state: LX_State, curr_active: Currently_active) =
+	  activation_timer_finished_css(id).
+	  (!(DEPARTURE_DETECTIONS.id) || TRAIN_TYPES.id == TVP) -> (	
+		Check_Activate_LX(id = id, curr_active = curr_active[id -> Announcement(TRAIN_TYPES.id)])
+	  ) <> (
+		% Departure detection applies
+	    sum stat: Store_Status . current_train_status_r(id, stat).
+		(stat != Standstill) -> (
+		  Check_Activate_LX(id = id, curr_active = curr_active[id -> Announcement(TRAIN_TYPES.id)])
+		) <> (
+		  % Wait for next train report
+		  % Reduce max speed of train to 10 km/h                 
+		  set_max_train_speed_s(id, CONDITIONAL_SSP_SPEED).CSS()
+		)
+	  )	
+	;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% Initializers
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+act
+	announcement_zone_too_short: Track_id;
+proc
+	Init_Trains =
+	  Init_Train(TRACK_IDS.0) || 
+	  Init_Train(TRACK_IDS.1) || 
+  	  Init_Train(TRACK_IDS.2) || 
+	  Init_Train(TRACK_IDS.3) ||
+	  Init_All_Trains(existing_trains(TRACK_IDS))
+	;
+
+	Init_Train(id: Track_id) =
+	  (!long_enough_announcement(id)) ->
+	    announcement_zone_too_short(id)
+	  <>
+	  (legal_train_and_track(id)) ->
+	  	Train(id, TRAIN_TYPES.id, TRAIN_SPECS.id, LX_Info(false, true), init_halted(SPEEDS.id), SPEEDS.id, MAX_SPEEDS.id, Acc_Status(Steady, 0)) 
+	;
+
+	Init_All_Trains(ids: Track_ids) =
+	  All_Trains(ids, initial_locations) ||
+	  Ghost_Trains(nr_trains_and_tracks(TRACK_IDS))
+    ;
+
+	Init_Timers =
+	  Init_Timer(TRACK_IDS.0) ||
+	  Init_Timer(TRACK_IDS.1) ||
+	  Init_Timer(TRACK_IDS.2) ||
+	  Init_Timer(TRACK_IDS.3) ||
+	  Ghost_Timer(nr_trains_and_tracks(TRACK_IDS))
+   	;
+	
+	Init_Timer(id: Track_id) =
+	  (legal_train_and_track(id)) -> 
+		Timer(id, TRAIN_TYPES.id, 0)
+	;
+
+	Init_Activation_Timers =
+	  Activation_Timer(TRACK_IDS.0, Deactivated) ||
+	  Activation_Timer(TRACK_IDS.1, Deactivated) ||
+	  Activation_Timer(TRACK_IDS.2, Deactivated) ||
+	  Activation_Timer(TRACK_IDS.3, Deactivated)
+	;
+	
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%
+%% process initialisers
+%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+proc
+	Crossing =
+	allow({
+	  activate_lx,
+	  deactivate_lx,
+	  move|move|move|move|syncing, 
+	  current_position,
+	  lx_status,
+	  all_trains_outside_active_zone,
+	  train_report,
+	  remove_train,
+	  announcement_zone_too_short,
+	  set_activation_timer,
+	  activation_timer_finished,
+	  train_on_lx_this_second,
+	  train_on_lx_first_time,
+	  middle_section_free,
+	  current_train_status,
+	  all_trains_reached_end,
+	  set_max_train_speed
+	},
+	comm({
+	  set_activation_timer_css|set_activation_timer_act -> set_activation_timer,
+	  current_train_status_s|current_train_status_r -> current_train_status,
+	  activation_timer_finished_css|activation_timer_finished_act -> activation_timer_finished,
+	  move_train|receive_pos -> move, 
+	  middle_section_free_s|middle_section_free_r -> middle_section_free,
+	  current_position_s|current_position_r|current_position_t -> current_position,
+	  train_report_timer|receive_train_report|train_report_train|train_report_check -> train_report,
+	  activate_lx_css|activate_lx_timer|activate_lx_lx -> activate_lx,
+	  deactivate_lx_css|deactivate_lx_timer|deactivate_lx_lx -> deactivate_lx,
+	  sync_timers|sync_timers|sync_timers|sync_timers|update_lx_time|sync_css|ac_time|ac_time|ac_time|ac_time -> syncing,
+	  remove_train_s|remove_train_r|remove_train_t|remove_train_all_trains|deactivate_for_removed_train|remove_train_g -> remove_train,
+	  train_on_lx_this_second_t|train_on_lx_this_second_ti -> train_on_lx_this_second,
+	  set_max_train_speed_s|set_max_train_speed_r -> set_max_train_speed
+	},	
+	  Init_Trains ||
+	  Init_Timers ||
+	  Init_Activation_Timers || 
+	  Check_Standstill(initial_status, set_start_reports(TRACK_IDS, initial_reports)) ||
+	  CSS(deactivated, initial_lx_activation) || 
+	  LX(deactivated)
+	));
+
+init
+	Crossing
+;

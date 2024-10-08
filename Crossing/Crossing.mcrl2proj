@@ -1,0 +1,11 @@
+<root>
+ <spec>Crossing_spec.mcrl2</spec>
+ <properties>
+  <property>If_train_on_LX_then_lx_active_for_at_least_ANNOUNCEMENT_TIME</property>
+  <property>All_trains_reach_the_end_of_their_track</property>
+  <property>If_no_train_close_to_the_LX_then_the_LX_must_be_deactivated</property>
+  <property>LX_warning_time_should_not_exceed_EXCEEDING_ANNOUNCEMENT_TIME</property>
+  <property>All_trains_are_on_lx_first_time</property>
+  <property>Maximum_Warning_Time</property>
+ </properties>
+</root>

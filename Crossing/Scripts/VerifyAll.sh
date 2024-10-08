@@ -1,0 +1,10 @@
+echo "All Trains Reach End: ";
+lts2pbes --formula="../properties/All_trains_reach_the_end_of_their_track.mcf" crossing.lts | pbessolve;
+echo "LX Closed On Time: ";
+lts2pbes --formula="../properties/If_train_on_LX_then_lx_active_for_at_least_ANNOUNCEMENT_TIME.mcf" crossing.lts | pbessolve;
+echo "LX Open On Time: ";
+lts2pbes --formula="../properties/If_no_train_close_to_the_LX_then_the_LX_must_be_deactivated.mcf" crossing.lts | pbessolve;
+echo "LX Closed Not Too long: ";
+lts2pbes --formula="../properties/LX_warning_time_should_not_exceed_EXCEEDING_ANNOUNCEMENT_TIME.mcf" crossing.lts | pbessolve;
+echo "Every Train emits the action 'train_on_lx_first_time': ";
+lts2pbes --formula="../properties/All_trains_are_on_lx_first_time.mcf" crossing.lts | pbessolve;

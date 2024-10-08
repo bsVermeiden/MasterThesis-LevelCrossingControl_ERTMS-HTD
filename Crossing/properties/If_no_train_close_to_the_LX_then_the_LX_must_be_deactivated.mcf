@@ -1,0 +1,9 @@
+% If all trains are outside the activation zone, 
+% then the LX should be deactivated in that second, 
+% so before any move/syncing action is done
+[true*.all_trains_outside_active_zone]
+<
+  forall id,id1,id2,id3: Track_id, ts,ts1,ts2,ts3: Train_spec, t: Time .
+	!move(id,ts)|move(id1,ts1)|move(id2,ts2)|move(id3,ts3)|syncing(t)*.
+  lx_status(deactivated)
+>true

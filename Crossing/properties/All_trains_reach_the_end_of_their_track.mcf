@@ -1,0 +1,2 @@
+% We should always reach the state where all trains are at the end of their track 
+[true*]<true*.all_trains_reached_end>true

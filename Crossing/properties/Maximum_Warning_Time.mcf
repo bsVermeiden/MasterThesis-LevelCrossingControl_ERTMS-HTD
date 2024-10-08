@@ -1,0 +1,15 @@
+% Check if the train has warning time 
+% equal to the maximum warning time
+% [true*.train_on_lx_first_time(0)]
+% exists t', t_active: Time .
+% <
+%   lx_status(activated(t', t_active))
+% >
+% val(t_active > ANNOUNCEMENT_TIME + 1)
+
+<true*.train_on_lx_first_time(0)>
+exists t', t_active: Time .
+<
+  lx_status(activated(t', t_active))
+>
+val(t_active > ANNOUNCEMENT_TIME + 1)

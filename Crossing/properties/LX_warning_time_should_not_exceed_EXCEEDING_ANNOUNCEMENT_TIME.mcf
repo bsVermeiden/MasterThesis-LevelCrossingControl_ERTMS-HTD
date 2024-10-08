@@ -1,0 +1,14 @@
+% There should be a train on the LX before the time active is 
+% larger than the EXCEEDING_ANNOUNCEMENT_TIME
+% Only needs to hold for TR based trains
+[true*.
+  exists id: Track_id.
+	val(TRAIN_TYPES.id == TR)
+	&&
+	train_on_lx_first_time(id)
+]
+  exists t', t_active : Time .
+<
+    lx_status(activated(t', t_active))
+>
+val(t_active <= ANNOUNCEMENT_TIME + EXCEEDING_ANNOUNCEMENT_TIME)

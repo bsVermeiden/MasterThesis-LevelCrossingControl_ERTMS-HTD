@@ -1,0 +1,3 @@
+forall id: Track_id . 
+  val(id in existing_trains(TRACK_IDS)) =>
+  <true*.train_on_lx_first_time(id)>true

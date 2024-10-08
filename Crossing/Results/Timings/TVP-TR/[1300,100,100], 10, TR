@@ -1,0 +1,6 @@
+- tool: lps2lts
+  timing:
+    total: 118.042297
+- tool: lps2lts
+  timing:
+    total: 117.845448
